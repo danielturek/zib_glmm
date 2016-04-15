@@ -1,5 +1,4 @@
-
-rm(list=ls())
+rrr
 
 createNamedObjectsFromList <- function(lst, writeToFile = NULL, envir = parent.frame()) {
     for(i in seq_along(lst)) {
@@ -19,20 +18,21 @@ createNamedObjectsFromList <- function(lst, writeToFile = NULL, envir = parent.f
     }
 }
 
-jagsGLMMdata <- readRDS('../orig_files/Data_JAGS_GLMM.rds')
+##jagsGLMMdata <- readRDS('../orig_files/Data_JAGS_GLMM_v1.rds')
+jagsGLMMdata <- readRDS('../orig_files/Data_JAGS_GLMM_v2.rds')
+
 createNamedObjectsFromList(jagsGLMMdata)
 
 y <- detectionMatrix
-year2 <- year^2
-month2 <- month^2
-
-##save(list = c('nsite', 'nlist', 'aet', 'cwd', 'tmx', 'tmn', 'year', 'year2', 'month', 'month2', 'list_length', 'y'), file = '../data/zib_data.RData')
+year2 <- year^2     ## quadratic year effect
+month2 <- month^2   ## quadratic month effect
+year_list_length <- year * list_length   ## year:list_length interaction term
 
 ind <- which(!is.na(y))
 N <- length(ind)
 
 aetflat <- aet[ind]
-cwdflat <- cwd[ind]
+##cwdflat <- cwd[ind]   ## dropped 'cwd' covarite in v2 of model
 tmxflat <- tmx[ind]
 tmnflat <- tmn[ind]
 yearflat <- year[ind]
@@ -40,6 +40,7 @@ year2flat <- year2[ind]
 monthflat <- month[ind]
 month2flat <- month2[ind]
 list_lengthflat <- list_length[ind]
+year_list_lengthflat <- year_list_length[ind]  ## year:list_length interaction term
 yflat <- y[ind]
 
 siteMatrix <- array(rep(1:nsite, each=nlist), c(nlist, nsite))
@@ -47,15 +48,17 @@ siteIDflat <- siteMatrix[ind]
 
 save(list = c(
          'N', 'nsite',
-         'aetflat', 'cwdflat', 'tmxflat', 'tmnflat',
+         ## 'cwdflat',     ## dropped 'cwdflat' covariate
+         'aetflat', 'tmxflat', 'tmnflat',
          'yearflat', 'year2flat', 'monthflat', 'month2flat',
          'list_lengthflat',
+         'year_list_lengthflat',  ## year:list_length interaction term
          'yflat',
          'siteIDflat'
 ),
      file = '../data/zib_data.RData')
 
-q('no')
+qqq
 
 
 
