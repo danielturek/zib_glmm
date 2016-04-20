@@ -11,10 +11,10 @@ publish: true
 
 ## Introduction
 
-We'll look at two different ways of parametrizing your model.  The first uses latent states, and is the traditional form for occupancy models (the only to fit these models in most software).  The second parametrization will be NIMBLE-only, and we'll see is much faster.
+We'll look at two different ways of parametrizing your model.  The first uses latent states, the traditional form for occupancy models, and is the only to fit these models in most software.  The second parametrization will be NIMBLE-only, and we'll see is much faster.
 
 
-I've did some processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays, with only roughly about 600 actual observations, the data is now in 'flat' structures: 1-dimensional vectors containing *only* the 600 actual obsevations, with a new site-membership indicator variable "siteID" for correctly assigning the site random effects. To see the data processing that takes place, take a look at [create_data.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/create_data.R).
+I did some pre-processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays with only roughly 600 actual observations, the data is now in "flat" structures: 1-dimensional vectors containing *only* the 600 actual obsevations, with a new site-membership indicator variable "siteID" for correctly assigning the site random effects. To see the data processing that takes place, take a look at [create_data.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/create_data.R).
 
 ```{r, message = FALSE}
 ## load libraries
@@ -135,7 +135,7 @@ These are too slow, since we'll want upwards of 100,000 posterior samples, at le
 
 Now we'll write the model in a different way.  I've written a custom distribution for use in the model specification, called `dOccupancy`.  You can see the definition of this in [definitions.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/definitions.R).  As parameters it takes the occupancy probability `p_occ` and the observation probability `p_obs`, and it returns the marginalized probability density of the observation.
 
-You can see the new model specification below, without the latent `z` variables, and using this new custom `dOccupancy` distribution for the observations `y`.  This model can only be used with NIMBLE.
+You can see the new model specification below, without the latent `z` variables, and using the custom `dOccupancy` distribution for the observations `y`.  This model can only be used with NIMBLE.
 
 ```{r define-dOcc-model}
 ## latent state model code
