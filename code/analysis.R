@@ -246,9 +246,7 @@ load(file = '../cached/comp_dOcc.RData')
 make_MCMC_comparison_pages(comp_dOcc, dir = '../html')
 ##```
 
-##It's worth spending at least a few minutes looking over [these comparison pages](file:///Users/dturek/GitHub/zib_glmm/code/analysis.html).
-
-##At this point, we can draw some nice conclusions.
+##It's worth spending at least a few minutes looking over [these comparison pages](http://danielturek.github.io/zib_glmm/html/dOccupancy.html).  At this point we can start making some conclusions.
 
 ##Looking at the Posterior Summaries section at the bottom of the comparisons page, we see that all MCMC algorithms appear to have converged nicely to basically the same posterior distribution.  The only one with any noticeable differences is the posterior for `sigma_alpha`, but the differences are minor.  Also, for the purposes of your biological anlysis, the standard deviation of the site random effects is probably not the most critical model parameter.  We'll check convergence otherwise, but this gives us good confidence in the results.
 
