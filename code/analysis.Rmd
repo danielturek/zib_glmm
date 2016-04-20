@@ -362,8 +362,13 @@ coda::gelman.diag(mcmcs, autoburnin = FALSE)
 
 Convergence looks excellent, on all counts.
 
+Let's also just take a quick look at the Effective Sample Size (ESS) that we've actually collected for each parameter.  We'll just look at the first chain.
 
+```{r final-mcmc-ess}
+apply(samples1, 2, coda::effectiveSize)
+```
 
+These vary a lot, but we have over 2,000 independent samples for `sigma_alpha`, and more for all the other parameters.  Perhaps we could desire more, but this will be enough for our inferences.  Of course if you want more samples, you can use this code to generate more.
 
 
 ## Posterior Inferences
@@ -373,7 +378,7 @@ Finally!  We have lots of samples that we're happy with.  Now we can now make po
  Let me know if you want any help on how to interpet all these numbers.  As far as interpreting the actual `beta[i]` parameters, you'll have to just look back at the model specifications above, but that's easy enough.
 
 
-#### Posterior Mean
+### Posterior Mean
 
 ```{r}
 cbind(apply(samples1, 2, mean),
@@ -381,7 +386,7 @@ cbind(apply(samples1, 2, mean),
 ```
 
 
-#### Posterior Median
+### Posterior Median
 
 ```{r}
 cbind(apply(samples1, 2, median),
@@ -391,7 +396,7 @@ cbind(apply(samples1, 2, median),
 We see the posterior distributions are only mildly skewed, the one exception being `sigma_alpha`.
 
 
-#### Standard Error
+### Standard Error
 
 ```{r}
 nsamples <- dim(samples1)[1]
@@ -403,7 +408,7 @@ cbind(apply(samples1, 2, sd),
 Very pleasingly small standard error for each parameter.  That's a direct result of having been able to collect so many samples from a highly-efficient MCMC algorithm  =)
 
 
-#### Posterior Density Plots
+### Posterior Density Plots
 
 We'll only plot posterior densities from the first chain.
 
@@ -416,12 +421,11 @@ plot(mcmcs[[1]], ask = FALSE)
 
 
 
-## Wrapping up
+## Wrap Up
 
 I suspect there might still be some changes or modifications to your model or dataset.  If that's the case, it's ok.  Just keep in touch.
 
 Also, I'll be happy to contribute a short bit on fitting the model for any publications that come out of this work.
 
-Cheers!
-
+Cheers!  - Daniel
 
