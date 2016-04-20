@@ -14,7 +14,7 @@ publish: true
 We'll look at two different ways of parametrizing your model.  The first uses latent states, and is the traditional form for occupancy models (the only to fit these models in most software).  The second parametrization will be NIMBLE-only, and we'll see is much faster.
 
 
-I've did some processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays, with only roughly about 600 actual observations, the data is now in 'flat' structures: 1-dimensional vectors containing *only* the 600 actual obsevations, with a new site-membership indicator variable `siteID` for correctly specifying the random effects. To see the data processing that takes place, take a look at `code/create_data.R`.
+I've did some processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays, with only roughly about 600 actual observations, the data is now in 'flat' structures: 1-dimensional vectors containing *only* the 600 actual obsevations, with a new site-membership indicator variable "siteID" for correctly assigning the site random effects. To see the data processing that takes place, take a look at [create_data.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/create_data.R).
 
 ```{r, message = FALSE}
 ## load libraries
@@ -45,7 +45,7 @@ fromR <- FALSE
 
 The latent state version of the model includes the latent variables `z`, indicating true presence / absense.  Including these introduces about 600 additional unknown variables into the model which must be sampled, which slows down the MCMC a lot.
 
-In the second formulation of the model, we'll use a custom distribution in NIMBLE to remove these latent states.  But to use JAGS (for the first comparison), we can't use custom distributions, and therefore use the latent state model representation.
+In the second formulation of the model, we'll use a custom distribution in NIMBLE to remove these latent states.  But to use JAGS (for the first comparison), we can't use custom distributions, and therefore we use the latent state model representation.
 
 ```{r}
 ## latent state model code
@@ -59,7 +59,7 @@ code <- nimbleCode({
     for(i in 1:10) {
         beta[i] ~ dnorm(0, 0.001)
     }
-    ## notice the single index i, using the new 'flat' data structures
+    ## notice the single index i, using the new "flat" data structures
     ## also the siteID group membership, used to assign the correct random effect
     for(i in 1:N) {
         logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
@@ -70,23 +70,23 @@ code <- nimbleCode({
     }
 })
 
-## notice everything is the 'flat' structure
+## notice everything is the "flat" structure
 constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
 
-## notice everything is the 'flat' structure
+## notice everything is the "flat" structure
 data <- list(y=yflat)
 
 inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,10), z=rep(1,N))
 
-## LS indicates model information for the 'latent state' version
+## LS indicates model information for the latent state version
 modelInfo_LS <- list(code=code, constants=constants, data=data, inits=inits, name='LS')
 ```
 
 
 
-We'll use both NIMBLE and JAGS to fit the latent state model.
+We can use both NIMBLE and JAGS to fit the latent state model.
 
-We'll use 22,000 iterations, after 2000 burnin will leave 20,000 samples.
+We'll use 22,000 iterations, after 2,000 burnin will leave 20,000 samples.
 
 ```{r, eval = FALSE}
 niter <- 22000
@@ -105,7 +105,7 @@ save(comp_LS, file = '../cached/comp_LS.RData')
 load(file = '../cached/comp_LS.RData')
 ```
 
- We'll take a look at how quickly that ran, and the resulting effective sample size (ESS).
+ Take a look at how quickly that ran, and the resulting effective sample size (ESS).
 
 ```{r}
 ## runtime (in minutes) of each algorithm
@@ -116,15 +116,15 @@ JAGS takes about 5 minutes, NIMBLE takes about 30 seconds, to produce 20,000 sam
 
 ESS takes into account the autocorrelation in the posterior chains, and is a measure of the actual number of *independent* posterior samples.  At this point, it's worth you taking a few minutes to read about this metric of MCMC performance.  There's a good description of it [available here](https://nature.berkeley.edu/~pdevalpine/MCMC_comparisons/nimble_MCMC_comparisons.html).
 
- Next is the *minimum efficiency* for all sampled parameters, which is the number of effective samples produces per second of runtime.
+ Here is the *minimum efficiency* across all sampled parameters, which is the number of effective (independent) samples produced per second of runtime.
 
 ```{r}
 comp_LS$LS$efficiency$min
 ```
 
-JAGS has minimum efficiency about 0.01, meaning it produces about 1 sample every 100 seconds. NIMBLE has minimum efficiency of 0.14, meaning it produces about 1 sample every 7 seconds.
+JAGS has minimum efficiency about 0.01, meaning it produces about 1 sample every 100 seconds (for the slowest mixing parameter). NIMBLE has minimum efficiency of 0.14, meaning it produces about 1 sample every 7 seconds (again, for the slowest mixing parameter).
 
-This is too slow, since we'll want upwards of 100,000 posterior samples, at least.  We'll stop looking at the latent state model here, and move on to the next, faster, model representation.
+These are too slow, since we'll want upwards of 100,000 posterior samples, at least.  That would require 4 hours of runtime for the faster algorithm (NIMBLE).  We'll stop considering the latent state model, and move on to the next, faster, model representation.
 
 
 
@@ -133,9 +133,9 @@ This is too slow, since we'll want upwards of 100,000 posterior samples, at leas
 
 ##Custom distribution representation
 
-Now we'll try writing your model in a slightly different way.  I've written a custom distribution for use in the model specification, called `dOccupancy()`.  You can see the definition of this in `code/definitions.R`.  As parameters it takes the occupancy probability and the observation probability, and it returns the probability density.
+Now we'll write the model in a different way.  I've written a custom distribution for use in the model specification, called `dOccupancy`.  You can see the definition of this in [definitions.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/definitions.R).  As parameters it takes the occupancy probability `p_occ` and the observation probability `p_obs`, and it returns the marginalized probability density of the observation.
 
-You can see the new model specification below, without the latent `z` variables, and using this new custom distribution for the observations `y`.  This model can only be used with NIMBLE.
+You can see the new model specification below, without the latent `z` variables, and using this new custom `dOccupancy` distribution for the observations `y`.  This model can only be used with NIMBLE.
 
 ```{r define-dOcc-model}
 ## latent state model code
@@ -155,14 +155,13 @@ code <- nimbleCode({
     }
 })
 
-## still using the 'flat' data structures
+## still using the "flat" data structures
 constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
 
-## still using the 'flat' data structures
+## still using the "flat" data structures
 data <- list(y=yflat)
 
-## Note: no longer have initial values for 'z' variables,
-## since they've been removed from the model.
+## Note: no longer have initial values for "z", since it's been removed from the model.
 inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,10))
 
 modelInfo_dOccupancy <- list(code=code, constants=constants, data=data, inits=inits, name='dOccupancy')
@@ -172,7 +171,7 @@ modelInfo_dOccupancy <- list(code=code, constants=constants, data=data, inits=in
 
 Now we'll do some runs with this model.  Since it will run much faster, we'll do 502,000 iterations.  I'm only choosing that number such that after the burnin of 2,000 iterations, we'll retain 500,000 posterior samples.
 
-This time, we'll consider a large number of different MCMC algorithms.  This serves two purposes:
+We'll consider a large number of different MCMC algorithms.  This serves two purposes:
 
 - Finding the most efficient algorithm
 
@@ -240,7 +239,7 @@ save(comp_dOcc, file = '../cached/comp_dOcc.RData')
 load(file = '../cached/comp_dOcc.RData')
 ```
 
-Here's a really nice feature of NIMBLE's MCMC comparisons feature: the MCMC comparisons pages.  This next command will generate nice visual summaries of the performance of all the MCMC algorithms we just ran.
+Here's a really nice feature of NIMBLE's MCMC comparisons: the MCMC comparisons pages.  This next command will generate nice visual summaries of the performance of all the MCMC algorithms we just ran.
 
 ```{r make-dOcc-comparison-page, eval = FALSE}
 make_MCMC_comparison_pages(comp_dOcc, dir = '../html')
@@ -248,11 +247,11 @@ make_MCMC_comparison_pages(comp_dOcc, dir = '../html')
 
 It's worth spending at least a few minutes looking over [these comparison pages](http://danielturek.github.io/zib_glmm/html/dOccupancy.html).  At this point we can start making some conclusions.
 
-Looking at the Posterior Summaries section at the bottom of the comparisons page, we see that all MCMC algorithms appear to have converged nicely to basically the same posterior distribution.  The only one with any noticeable differences is the posterior for `sigma_alpha`, but the differences are minor.  Also, for the purposes of your biological anlysis, the standard deviation of the site random effects is probably not the most critical model parameter.  We'll check convergence otherwise, but this gives us good confidence in the results.
+Looking at the Posterior Summaries section at the bottom of the [comparisons page](http://danielturek.github.io/zib_glmm/html/dOccupancy.html), we see that all MCMC algorithms appear to have converged nicely to the same posterior distribution.  The only one with any noticeable differences is the posterior for `sigma_alpha`, but the differences are minor.  Also, for the purposes of your biological anlysis, the standard deviation of the site random effects is probably not the most critical model parameter.  We'll check convergence otherwise, but this gives us good confidence in the results.
 
 Looking at the minimum Efficiency for each MCMC, the log_shft_blk is the best overall, where the mixing is still limited by `sigma_alpha`, producing only 6 effectively independent samples per second of runtime.
 
-We'll accept this MCMC algorithm, log_shft_blk, as the "best" hereafter, although most all of these algorithms would be just fine to use.
+We'll accept this MCMC algorithm, log_shft_blk, as the "best" algorithm hereafter, although most all of these algorithms would be just fine to use.
 
 Before we go ahead an run it longer, let's examine a few more things.
 
@@ -270,7 +269,7 @@ What was the actual Effective Sample Size (ESS) it produced for all parameters? 
 comp_dOcc$dOccupancy$summary['log_shft_blk', 'ess',]
 ```
 
-The smallest ESS is for `sigma_alpha` (as we knew), with about 1,200 independent posterior samples.  The others are all more.  This is ok, but we'll run the algorithm for longer the final time.
+The smallest ESS is for `sigma_alpha` (as we knew), with about 1,200 independent posterior samples.  The others are all more.  This is ok, but we'll run the algorithm for longer the final analysis.
 
 Let's also just take a look at the mixing for `sigma_alpha`, to make sure it looks ok.
 
@@ -279,7 +278,7 @@ if(fromR) dev.new(width=8, height=3.5)
 tsplot(comp_dOcc$dOccupancy$samples['log_shft_blk', 'sigma_alpha', 300000:500000], main='sigma_alpha', xlab='', ylab='')
 ```
 
-The mixing is good. Not the best we can imagine, and it's definitely upper-truncated at 500, but this is pretty good overall.
+The mixing is good. Not the best we can imagine, and it's definitely upper-truncated at 500, but this is fine overall.
 
 
 
@@ -335,7 +334,7 @@ set.seed(2)
 Cmcmc$run(niter)
 samples2 <- as.matrix(Cmcmc$mvSamples)[100001:niter, ]
 
- create mcmc and mcmc.list objects for plotting and convergence diagnostics
+## create mcmc and mcmc.list objects for plotting and convergence diagnostics
 mcmc1 <- coda::as.mcmc(samples1)
 mcmc2 <- coda::as.mcmc(samples2)
 mcmcs <- coda::mcmc.list(mcmc1, mcmc2)
@@ -350,9 +349,9 @@ load(file = '../cached/final_MCMC.RData')
 
 ## Assessing convergence
 
-Here we'll assess convergence from these two MCMC chains.
+Now we assess convergence using these two MCMC chains.
 
-We'll use the mainstream Gelman & Rubin convergence diagnostic from the `coda` package.  We want to see values near to 1 here.
+We'll use the mainstream Gelman & Rubin convergence diagnostic from the `coda` package.  We want to see all values near to 1.
 
 ```{r gelman-diag}
 coda::gelman.diag(mcmcs, autoburnin = FALSE)
@@ -373,7 +372,7 @@ These vary a lot, but we have over 2,000 independent samples for `sigma_alpha`, 
 
 Finally!  We have lots of samples that we're happy with.  Now we can now make posterior inferences.  For extra assurance, we'll make the inferences from both chain1 and chain2, and expect to see (essentially) the same results.
 
- Let me know if you want any help on how to interpet all these numbers.  As far as interpreting the actual `beta[i]` parameters, you'll have to just look back at the model specifications above, but that's easy enough.
+ Let me know if you want any help on how to interpet or use any of these numbers.  As far as interpreting the actual `beta[i]` parameters, you'll have to just look back at the model specifications above to see what each `beta[i]` represents, but that's easy enough.
 
 
 ### Posterior Mean
@@ -403,7 +402,8 @@ cbind(apply(samples1, 2, sd),
       apply(samples2, 2, sd)) / sqrt(nsamples)
 ```
 
-Very pleasingly small standard error for each parameter.  That's a direct result of having been able to collect so many samples from a highly-efficient MCMC algorithm  =)
+Pleasingly, very small standard errors for each parameter.  That's a direct result of having been able to collect so many samples from a highly-efficient MCMC algorithm.
+
 
 
 ### Posterior Density Plots
