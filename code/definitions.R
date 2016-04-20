@@ -1,12 +1,11 @@
 
-
 ##################################################
 ### Latent state version of zip model ###########
 ##################################################
 
 code <- nimbleCode({
     mu_alpha ~ dnorm(0, 0.001)
-    sigma_alpha ~ dunif(0, 100)
+    sigma_alpha ~ dunif(0, 500)
     tau_alpha <- 1 / (sigma_alpha * sigma_alpha)
     for(j in 1:nsite) { 
         alpha[j] ~ dnorm(mu_alpha, tau_alpha)  ## site random effect
@@ -17,15 +16,15 @@ code <- nimbleCode({
     ##for(i in 1:nlist) {        # i: events (year-months)
     ##    for(j in 1:nsite) {    # j: sites
     for(i in 1:N) {
-        logit(p_occ[i]) <- alpha[siteID[i]] + beta[3]*aet[i] + beta[4]*cwd[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
-        logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i]
+        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
+        logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i] + beta[3]*year_list_length[i]
         z[i] ~ dbern(p_occ[i])
         mu_y[i] <- z[i] * p_obs[i]
         y[i] ~ dbern(mu_y[i])
     }
 })
 
-constants <- list(N=N, nsite=nsite, aet=aetflat, cwd=cwdflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, siteID=siteIDflat)
+constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
 
 data <- list(y=yflat)
 
@@ -67,7 +66,7 @@ registerDistributions(list(
 
 code <- nimbleCode({
     mu_alpha ~ dnorm(0, 0.001)
-    sigma_alpha ~ dunif(0, 100)
+    sigma_alpha ~ dunif(0, 500)
     for(j in 1:nsite) { 
         alpha[j] ~ dnorm(mu_alpha, sd = sigma_alpha)  ## site random effect
     }
@@ -77,13 +76,13 @@ code <- nimbleCode({
     ##for(i in 1:nlist) {        # i: events (year-months)
     ##    for(j in 1:nsite) {    # j: sites
     for(i in 1:N) {
-        logit(p_occ[i]) <- alpha[siteID[i]] + beta[3]*aet[i] + beta[4]*cwd[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
-        logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i]
+        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
+        logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i] + beta[3]*year_list_length[i]
         y[i] ~ dOccupancy(p_occ[i], p_obs[i])
     }
 })
 
-constants <- list(N=N, nsite=nsite, aet=aetflat, cwd=cwdflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, siteID=siteIDflat)
+constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
 
 data <- list(y=yflat)
 
@@ -100,7 +99,7 @@ rm(list = c('code', 'constants', 'data', 'inits'))
 ##################################################
 
 
-tsplot <- function(y, ...) plot(x = seq_along(y), y = y, ...)
+tsplot <- function(y, ...) plot(x = seq_along(y), y = y, type = 'l', ...)
 
 
 
