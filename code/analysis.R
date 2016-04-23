@@ -1,8 +1,24 @@
 ##---
-##title: 'Adam Zeilinger ZIB model'
+##title: 'Adam Zeilinger ZIB model (v.2)'
 ##author: Daniel Turek
 ##publish: true
 ##---
+
+
+
+
+
+#### Updates (v.2)
+
+##- Using new data set with N = 958 observations (lists >= 4 species)
+
+##- Removed quadratic year^2 effect, and added year:month and year:month^2 interactions to occpancy process
+
+##- Transformed new siteID (raster cell numbers) into sequential indexing of random effects
+
+##- Changed the prior for sigma_alpha form uniform(0, 500) to uniform(0, 1000), to capture more of the long right-tail of the posterior.
+
+
 
 
 
@@ -14,7 +30,7 @@
 ##We'll look at two different ways of parametrizing your model.  The first uses latent states, the traditional form for occupancy models, and is the only to fit these models in most software.  The second parametrization will be NIMBLE-only, and we'll see is much faster.
 
 
-##I did some pre-processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays with only roughly 600 actual observations, the data is now in "flat" structures: 1-dimensional vectors containing *only* the 600 actual obsevations, with a new site-membership indicator variable "siteID" for correctly assigning the site random effects. To see the data processing that takes place, take a look at [create_data.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/create_data.R).
+##I did some pre-processing of your data, to remove the huge numble of NA's from the raw observation matrix.  Instead of large 2-dimensional arrays with only roughly 900 actual observations, the data is now in "flat" structures: 1-dimensional vectors containing *only* the 900 actual obsevations, with a new site-membership indicator variable "siteID" for correctly assigning the site random effects. To see the data processing that takes place, take a look at [create_data.R](https://github.com/danielturek/zib_glmm/blob/gh-pages/code/create_data.R).
 
 ##```{r, message = FALSE}
 #### load libraries
@@ -23,7 +39,7 @@ require(rjags)
 require(coda)
 
 #### load the processed data
-load('../data/zib_data.RData')
+load('../data/zib_data_v3.RData')
 
 #### some other function definitions for custom samplers, ploting, etc.
 source('definitions.R')
@@ -43,7 +59,7 @@ fromR <- FALSE
 
 #### Latent state model
 
-##The latent state version of the model includes the latent variables `z`, indicating true presence / absense.  Including these introduces about 600 additional unknown variables into the model which must be sampled, which slows down the MCMC a lot.
+##The latent state version of the model includes the latent variables `z`, indicating true presence / absense.  Including these introduces about 900 additional unknown variables into the model which must be sampled, which slows down the MCMC a lot.
 
 ##In the second formulation of the model, we'll use a custom distribution in NIMBLE to remove these latent states.  But to use JAGS (for the first comparison), we can't use custom distributions, and therefore we use the latent state model representation.
 
@@ -51,18 +67,18 @@ fromR <- FALSE
 #### latent state model code
 code <- nimbleCode({
     mu_alpha ~ dnorm(0, 0.001)
-    sigma_alpha ~ dunif(0, 500)
+    sigma_alpha ~ dunif(0, 1000)
     tau_alpha <- 1 / (sigma_alpha * sigma_alpha)
     for(j in 1:nsite) { 
         alpha[j] ~ dnorm(mu_alpha, tau_alpha)  ## site random effect
     }
-    for(i in 1:10) {
+    for(i in 1:11) {
         beta[i] ~ dnorm(0, 0.001)
     }
     ## notice the single index i, using the new "flat" data structures
     ## also the siteID group membership, used to assign the correct random effect
     for(i in 1:N) {
-        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
+        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*month2[i] + beta[10]*year_month[i] + beta[11]*year_month2[i]
         logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i] + beta[3]*year_list_length[i]
         z[i] ~ dbern(p_occ[i])
         mu_y[i] <- z[i] * p_obs[i]
@@ -70,13 +86,11 @@ code <- nimbleCode({
     }
 })
 
-#### notice everything is the "flat" structure
-constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
+constants <- list(N=N, nsite=nsite, aet=aet, tmn=tmn, tmx=tmx, year=year, month=month, month2=month2, year_month=year_month, year_month2=year_month2, list_length=list_length, year_list_length=year_list_length, siteID=siteID)
 
-#### notice everything is the "flat" structure
-data <- list(y=yflat)
+data <- list(y=y)
 
-inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,10), z=rep(1,N))
+inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,11), z=rep(1,N))
 
 #### LS indicates model information for the latent state version
 modelInfo_LS <- list(code=code, constants=constants, data=data, inits=inits, name='LS')
@@ -112,7 +126,7 @@ load(file = '../cached/comp_LS.RData')
 comp_LS$LS$timing / 60
 ##```
 
-##JAGS takes about 5 minutes, NIMBLE takes about 30 seconds, to produce 20,000 samples.
+##JAGS takes about 8 minutes, NIMBLE takes about 30 seconds, to produce 20,000 samples.
 
 ##ESS takes into account the autocorrelation in the posterior chains, and is a measure of the actual number of *independent* posterior samples.  At this point, it's worth you taking a few minutes to read about this metric of MCMC performance.  There's a good description of it [available here](https://nature.berkeley.edu/~pdevalpine/MCMC_comparisons/nimble_MCMC_comparisons.html).
 
@@ -122,9 +136,9 @@ comp_LS$LS$timing / 60
 comp_LS$LS$efficiency$min
 ##```
 
-##JAGS has minimum efficiency about 0.01, meaning it produces about 1 sample every 100 seconds (for the slowest mixing parameter). NIMBLE has minimum efficiency of 0.14, meaning it produces about 1 sample every 7 seconds (again, for the slowest mixing parameter).
+##JAGS has minimum efficiency about 0.005, meaning it produces about 1 sample every 3 minutes (for the slowest mixing parameter). NIMBLE has minimum efficiency of 0.087, meaning it produces about 1 sample every 11 seconds (again, for the slowest mixing parameter).
 
-##These are too slow, since we'll want upwards of 100,000 posterior samples, at least.  That would require 4 hours of runtime for the faster algorithm (NIMBLE).  We'll stop considering the latent state model, and move on to the next, faster, model representation.
+##These are too slow, since we'll want upwards of 100,000 posterior samples, at least.  That would require 3 hours of runtime for the faster algorithm (NIMBLE).  We'll stop considering the latent state model, and move on to the next, faster, model representation.
 
 
 
@@ -141,28 +155,26 @@ comp_LS$LS$efficiency$min
 #### latent state model code
 code <- nimbleCode({
     mu_alpha ~ dnorm(0, 0.001)
-    sigma_alpha ~ dunif(0, 500)
+    sigma_alpha ~ dunif(0, 1000)
     for(j in 1:nsite) { 
         alpha[j] ~ dnorm(mu_alpha, sd = sigma_alpha)  ## site random effect
     }
-    for(i in 1:10) {
+    for(i in 1:11) {
         beta[i] ~ dnorm(0, 0.001)
     }
     for(i in 1:N) {
-        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*year2[i] + beta[10]*month2[i]
+        logit(p_occ[i]) <- alpha[siteID[i]] + beta[4]*aet[i] + beta[5]*tmn[i] + beta[6]*tmx[i] + beta[7]*year[i] + beta[8]*month[i] + beta[9]*month2[i] + beta[10]*year_month[i] + beta[11]*year_month2[i]
         logit(p_obs[i]) <- beta[1] + beta[2]*list_length[i] + beta[3]*year_list_length[i]
         y[i] ~ dOccupancy(p_occ[i], p_obs[i])
     }
 })
 
-#### still using the "flat" data structures
-constants <- list(N=N, nsite=nsite, aet=aetflat, tmn=tmnflat, tmx=tmxflat, year=yearflat, year2=year2flat, month=monthflat, month2=month2flat, list_length=list_lengthflat, year_list_length=year_list_lengthflat, siteID=siteIDflat)
+constants <- list(N=N, nsite=nsite, aet=aet, tmn=tmn, tmx=tmx, year=year, month=month, month2=month2, year_month=year_month, year_month2=year_month2, list_length=list_length, year_list_length=year_list_length, siteID=siteID)
 
-#### still using the "flat" data structures
-data <- list(y=yflat)
+data <- list(y=y)
 
 #### Note: no longer have initial values for "z", since it's been removed from the model.
-inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,10))
+inits <- list(mu_alpha=0, sigma_alpha=1, alpha=rep(0,nsite), beta=rep(0,11))
 
 modelInfo_dOccupancy <- list(code=code, constants=constants, data=data, inits=inits, name='dOccupancy')
 ##```
@@ -205,7 +217,7 @@ comp_dOcc <- compareMCMCs(modelInfo_dOccupancy,
                                   spec <- configureMCMC(Rmodel)
                                   spec$removeSamplers('beta[1:10]')
                                   spec$addSampler('beta[1:3]', 'RW_block')
-                                  spec$addSampler('beta[4:10]', 'RW_block')
+                                  spec$addSampler('beta[4:11]', 'RW_block')
                                   spec }),
                               log_shft = quote({
                                   spec <- configureMCMC(Rmodel)
@@ -216,7 +228,7 @@ comp_dOcc <- compareMCMCs(modelInfo_dOccupancy,
                                   spec <- configureMCMC(Rmodel)
                                   spec$removeSamplers('beta[1:10]')
                                   spec$addSampler('beta[1:3]', 'RW_block')
-                                  spec$addSampler('beta[4:10]', 'RW_block')
+                                  spec$addSampler('beta[4:11]', 'RW_block')
                                   spec$removeSamplers('sigma_alpha')
                                   spec$addSampler('sigma_alpha', 'RW_log_shift', list(shiftNodes='alpha'))
                                   spec }),
@@ -224,7 +236,7 @@ comp_dOcc <- compareMCMCs(modelInfo_dOccupancy,
                                   spec <- configureMCMC(Rmodel)
                                   spec$removeSamplers('beta[1:10]')
                                   spec$addSampler('beta[1:3]', 'RW_block')
-                                  spec$addSampler('beta[4:10]', 'RW_block')
+                                  spec$addSampler('beta[4:11]', 'RW_block')
                                   spec$removeSamplers('sigma_alpha')
                                   spec$addSampler('sigma_alpha', 'RW_log_shift', list(shiftNodes='alpha'))
                                   spec$removeSamplers('mu_alpha')
@@ -241,7 +253,7 @@ load(file = '../cached/comp_dOcc.RData')
 
 ##Here's a really nice feature of NIMBLE's MCMC comparisons: the MCMC comparisons pages.  This next command will generate nice visual summaries of the performance of all the MCMC algorithms we just ran.
 
-##```{r make-dOcc-comparison-page, eval = FALSE}
+##```{r make-dOcc-comparison-page}
 make_MCMC_comparison_pages(comp_dOcc, dir = '../html')
 ##```
 
@@ -261,7 +273,7 @@ make_MCMC_comparison_pages(comp_dOcc, dir = '../html')
 comp_dOcc$dOccupancy$timing / 60
 ##```
 
-##log_shft_blk algorithm took about 3 minutes, not too bad at all.
+##log_shft_blk algorithm took about 4.5 minutes, not too bad at all.
 
 ##What was the actual Effective Sample Size (ESS) it produced for all parameters?  Let's make sure it's somewhat reasonable.
 
@@ -269,7 +281,7 @@ comp_dOcc$dOccupancy$timing / 60
 comp_dOcc$dOccupancy$summary['log_shft_blk', 'ess',]
 ##```
 
-##The smallest ESS is for `sigma_alpha` (as we knew), with about 1,200 independent posterior samples.  The others are all more.  This is ok, but we'll run the algorithm for longer the final analysis.
+##The smallest ESS is for `sigma_alpha` (as we knew), with about 1,900 independent posterior samples.  The others are all more.  This is ok, but we'll run the algorithm for longer the final analysis.
 
 ##Let's also just take a look at the mixing for `sigma_alpha`, to make sure it looks ok.
 
@@ -278,7 +290,7 @@ if(fromR) dev.new(width=8, height=3.5)
 tsplot(comp_dOcc$dOccupancy$samples['log_shft_blk', 'sigma_alpha', 300000:500000], main='sigma_alpha', xlab='', ylab='')
 ##```
 
-##The mixing is good. Not the best we can imagine, and it's definitely upper-truncated at 500, but this is fine overall.
+##The mixing is good. Not the best we can imagine, and it's definitely upper-truncated at 1000, but this is fine overall.
 
 
 
@@ -308,7 +320,7 @@ spec <- configureMCMC(Rmodel)
 #### configure this specification the same as log_shft_blk from above
 spec$removeSamplers('beta[1:10]')
 spec$addSampler('beta[1:3]', 'RW_block')
-spec$addSampler('beta[4:10]', 'RW_block')
+spec$addSampler('beta[4:11]', 'RW_block')
 spec$removeSamplers('sigma_alpha')
 spec$addSampler('sigma_alpha', 'RW_log_shift', list(shiftNodes='alpha'))
 
@@ -365,7 +377,7 @@ coda::gelman.diag(mcmcs, autoburnin = FALSE)
 apply(samples1, 2, coda::effectiveSize)
 ##```
 
-##These vary a lot, but we have over 2,000 independent samples for `sigma_alpha`, and more for all the other parameters.  Perhaps we could desire more, but this will be enough for our inferences.  Of course if you want more samples, you can use this code to generate more.
+##These vary a lot, but we have over 3,400 independent samples for `sigma_alpha`, and more for all the other parameters.  Perhaps we could desire more, but this will be enough for our inferences.  Of course if you want more samples, you can use this code to generate more.
 
 
 #### Posterior Inferences
@@ -393,13 +405,19 @@ cbind(apply(samples1, 2, median),
 ##We see the posterior distributions are only mildly skewed, the one exception being `sigma_alpha`.
 
 
+##### Credible Intervals
+
+##```{r}
+cbind(apply(samples1, 2, function(x) quantile(x, 0.025)),
+      apply(samples1, 2, function(x) quantile(x, 0.975)))
+##```
+
+
 ##### Standard Error
 
 ##```{r}
-nsamples <- dim(samples1)[1]
-
 cbind(apply(samples1, 2, sd),
-      apply(samples2, 2, sd)) / sqrt(nsamples)
+      apply(samples2, 2, sd)) / dim(samples1)[1]
 ##```
 
 ##Pleasingly, very small standard errors for each parameter.  That's a direct result of having been able to collect so many samples from a highly-efficient MCMC algorithm.
@@ -410,9 +428,17 @@ cbind(apply(samples1, 2, sd),
 
 ##We'll only plot posterior densities from the first chain.
 
-##```{r posterior-plots}
+##```{r posterior-plots-eval-false, eval = FALSE}
 plot(mcmcs[[1]], ask = FALSE)
 ##```
+
+##```{r posterior-plots-make-them, echo = FALSE}
+plot(coda::as.mcmc(samples1[, c(1:10, 12:13)]), ask = FALSE)
+##```
+
+
+
+
 
 
 
