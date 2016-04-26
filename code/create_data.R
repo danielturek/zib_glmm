@@ -1,3 +1,4 @@
+
 rrr
 
 createNamedObjectsFromList <- function(lst, writeToFile = NULL, envir = parent.frame()) {
@@ -64,6 +65,27 @@ save(list = c(
          'siteID'
 ),
      file = '../data/zib_data_v3.RData')
+
+
+## v4, with fixed effects for months
+
+## changed the standardized 'month' variable into factors 1,2,3,...,12
+monthfixed <- as.numeric(factor(month, levels = sort(unique(month))))
+
+save(list = c(
+         'N', 'nsite',
+         'aet', 'tmx', 'tmn',
+         'year',
+         ## 'month', 'month2',   ## dropped standardized month variables
+         'monthfixed',           ## new fixed effects for months
+         'list_length',
+         'year_list_length',
+         ## 'year_month', 'year_month2',   ## dropped standardized month variables
+         'y',
+         'siteID'
+),
+     file = '../data/zib_data_v4_monthfixed.RData')
+
 
 qqq
 
