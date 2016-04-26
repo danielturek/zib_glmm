@@ -386,9 +386,11 @@ for(i in 1:3)
 
 ## Wrap Up
 
-I suspect there might still be some changes or modifications to your model or dataset.  If that's the case, it's ok.  Just keep in touch.
+I think this last version of the model (Part II) is our best yet.  The handling of the month variable truly needed to be changed.
 
-Also, I'll be happy to contribute a short bit on fitting the model for any publications that come out of this work.
+Also, now we see significant effects from a number of the variables, with some nice temporal trends as you had hoped.
+
+Let me know when you've had a chance to look over this.
 
 Cheers!  - Daniel
 
