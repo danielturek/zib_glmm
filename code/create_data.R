@@ -21,7 +21,8 @@ createNamedObjectsFromList <- function(lst, writeToFile = NULL, envir = parent.f
 
 ##jagsGLMMdata <- readRDS('../orig_files/Data_JAGS_GLMM_v1.rds')
 ##jagsGLMMdata <- readRDS('../orig_files/Data_JAGS_GLMM_v2.rds')
-jagsGLMMdata <- readRDS('../orig_files/data_nimble_zib_v3.rds')
+##jagsGLMMdata <- readRDS('../orig_files/data_nimble_zib_v3.rds')
+jagsGLMMdata <- readRDS('../orig_files/data_nimble_zib_v5_season.rds')
 ##potato <- readRDS('../orig_files/potato_psyllid_detection_dataset.rds')
 
 createNamedObjectsFromList(jagsGLMMdata)
@@ -85,6 +86,30 @@ save(list = c(
          'siteID'
 ),
      file = '../data/zib_data_v4_monthfixed.RData')
+
+
+
+## v5, with season fixed effects
+
+save(list = c(
+         'N', 'nsite',
+         'aet', 'tmx', 'tmn',
+         'year',
+         ## 'month', 'month2',   ## dropped standardized month variables
+         ##'monthfixed',         ## no longer using month effects,
+         'season',               ## instead, seasonal fixed effects
+         'list_length',
+         'year_list_length',
+         ## 'year_month', 'year_month2',   ## dropped standardized month variables
+         'y',
+         'siteID'
+),
+     file = '../data/zib_data_v5_season.RData')
+
+
+
+
+
 
 
 qqq
